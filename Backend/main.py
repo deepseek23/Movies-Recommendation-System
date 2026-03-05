@@ -24,6 +24,10 @@ if not TMDB_API_KEY:
     # Don't crash import-time in production if you prefer; but for you better fail early:
     raise RuntimeError("TMDB_API_KEY missing. Put it in .env as TMDB_API_KEY=xxxx")
 
+
+# =========================
+# FASTAPI APP
+# =========================
 app = FastAPI(title="Movie Recommender API", version="3.0")
 
 app.add_middleware(
@@ -34,12 +38,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# =========================
+# PICKLE GLOBALS
+# =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DF_PATH = os.path.join(BASE_DIR, "model", "df.pkl")
-INDICES_PATH = os.path.join(BASE_DIR, "model", "indices.pkl")
-TFIDF_MATRIX_PATH = os.path.join(BASE_DIR, "model", "tfidf_matrix.pkl")
-TFIDF_PATH = os.path.join(BASE_DIR, "model", "tfidf.pkl")
+DF_PATH = os.path.join(BASE_DIR, "df.pkl")
+INDICES_PATH = os.path.join(BASE_DIR, "indices.pkl")
+TFIDF_MATRIX_PATH = os.path.join(BASE_DIR, "tfidf_matrix.pkl")
+TFIDF_PATH = os.path.join(BASE_DIR, "tfidf.pkl")
 
 df: Optional[pd.DataFrame] = None
 indices_obj: Any = None
@@ -48,6 +56,10 @@ tfidf_obj: Any = None
 
 TITLE_TO_IDX: Optional[Dict[str, int]] = None
 
+
+# =========================
+# MODELS
+# =========================
 class TMDBMovieCard(BaseModel):
     tmdb_id: int
     title: str

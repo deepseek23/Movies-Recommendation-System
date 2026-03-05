@@ -20,19 +20,27 @@ const Home = () => {
     const fetchAllCategories = async () => {
       setLoading(true);
       const data = {};
-      try {
-        await Promise.all(
-          categories.map(async (cat) => {
-            const res = await getHomeMovies(cat.id);
-            data[cat.id] = res;
-          })
-        );
-        setMoviesData(data);
-      } catch (error) {
-        console.error('Failed to fetch home movies:', error);
-      } finally {
-        setLoading(false);
-      }
+      
+      const promises = categories.map(async (cat) => {
+        try {
+          const res = await getHomeMovies(cat.id);
+          return { id: cat.id, data: res };
+        } catch (error) {
+          console.error(`Failed to fetch ${cat.id}:`, error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(promises);
+      
+      results.forEach(item => {
+        if (item) {
+          data[item.id] = item.data;
+        }
+      });
+      
+      setMoviesData(data);
+      setLoading(false);
     };
     fetchAllCategories();
   }, []);
