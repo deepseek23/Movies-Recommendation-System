@@ -35,7 +35,7 @@ const Navbar = () => {
 
         {/* Search */}
         <div className="flex-1 max-w-sm">
-          <SearchBar />
+          {location.pathname !== '/search' && <SearchBar />}
         </div>
 
         {/* Nav Links */}

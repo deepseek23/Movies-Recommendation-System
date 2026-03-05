@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search as SearchIcon, Sparkles } from 'lucide-react';
-import { searchMovies } from '../api/api';
+import { Search as SearchIcon, Sparkles, Clock, TrendingUp, X } from 'lucide-react';
+import { searchMovies, getHomeMovies } from '../api/api';
 import { MovieGrid } from '../components/MovieGrid';
 import { Spinner } from '../components/Loader';
 
@@ -13,19 +13,58 @@ const Search = () => {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
+  const [history, setHistory] = useState([]);
+  const [ongoingMovies, setOngoingMovies] = useState([]);
+
+  useEffect(() => {
+    const savedHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+    setHistory(savedHistory);
+
+    const fetchOngoing = async () => {
+      try {
+        const data = await getHomeMovies('now_playing');
+        setOngoingMovies(data || []);
+      } catch (err) {
+        console.error('Failed to fetch ongoing movies', err);
+      }
+    };
+    fetchOngoing();
+  }, []);
 
   useEffect(() => {
     if (query) {
       setInputValue(query);
       handleSearch(query);
+    } else {
+      setResults([]);
+      setHasSearched(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
+
+  const addToHistory = (searchQuery) => {
+    setHistory(prev => {
+      const newHistory = [searchQuery, ...prev.filter(h => h !== searchQuery)].slice(0, 10);
+      localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
+
+  const removeFromHistory = (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setHistory(prev => {
+      const newHistory = prev.filter(h => h !== item);
+      localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
 
   const handleSearch = async (searchQuery) => {
     if (!searchQuery.trim()) return;
     setLoading(true);
     setHasSearched(true);
+    addToHistory(searchQuery);
     try {
       const data = await searchMovies(searchQuery);
       setResults(data.results || data || []);
@@ -43,13 +82,18 @@ const Search = () => {
     if (inputValue.trim()) setSearchParams({ q: inputValue.trim() });
   };
 
+  const handleHistoryClick = (item) => {
+    setInputValue(item);
+    setSearchParams({ q: item });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Page header */}
       <div className="pt-24 pb-8 px-6 md:px-12 max-w-[1400px] mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold text-white mb-6">Search</h1>
 
-        <form onSubmit={onSubmit} className="relative max-w-2xl">
+        <form onSubmit={onSubmit} className="relative max-w-2xl mb-8">
           <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
             type="text"
@@ -66,6 +110,48 @@ const Search = () => {
             {loading ? <Spinner /> : 'Search'}
           </button>
         </form>
+
+        {/* Previous Searches */}
+        {!hasSearched && history.length > 0 && (
+            <div className="mb-12">
+              <div className="flex items-center gap-2 mb-4 text-gray-400">
+                <Clock className="w-4 h-4" />
+                <h2 className="text-sm font-medium uppercase tracking-wider">Previous Searches</h2>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {history.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleHistoryClick(item)}
+                    className="group flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full text-sm text-gray-300 hover:text-white transition-colors border border-white/5 hover:border-white/20"
+                  >
+                    <span>{item}</span>
+                    <span
+                      onClick={(e) => removeFromHistory(e, item)}
+                      className="p-0.5 rounded-full hover:bg-white/20 text-gray-500 group-hover:text-gray-300"
+                    >
+                      <X className="w-3 h-3" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+        )}
+
+        {/* Ongoing/Now Playing Recommendations */}
+        {!hasSearched && ongoingMovies.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-6 text-accent">
+              <TrendingUp className="w-5 h-5" />
+              <h2 className="text-lg font-semibold text-white">Ongoing & Trending</h2>
+            </div>
+            <MovieGrid
+              movies={ongoingMovies.slice(0, 12)}
+              isLoading={false}
+              emptyMessage=""
+            />
+          </div>
+        )}
       </div>
 
       {/* Results */}
@@ -100,8 +186,8 @@ const Search = () => {
         </div>
       )}
 
-      {/* Initial empty state */}
-      {!hasSearched && (
+      {/* Initial empty state - Only show if no history and no suggestions */}
+      {!hasSearched && history.length === 0 && ongoingMovies.length === 0 && (
         <div className="flex flex-col items-center justify-center py-32 text-center">
           <SearchIcon className="w-14 h-14 text-gray-800 mb-4" />
           <p className="text-gray-600 text-sm">Start typing to search for movies</p>

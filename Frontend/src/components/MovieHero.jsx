@@ -78,7 +78,7 @@ const MovieHero = ({ movie }) => {
             {/* Action buttons */}
             <div className="flex items-center gap-3">
               <Link
-                to={movieId ? `/movie/${movieId}` : '#'}
+                to={movieId ? `/player/${movieId}` : '#'}
                 className="flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-md font-bold text-sm hover:bg-white/90 transition-colors tracking-wide"
               >
                 <Play className="w-4 h-4 fill-black" />

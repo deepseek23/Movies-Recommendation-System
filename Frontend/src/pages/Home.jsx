@@ -5,6 +5,7 @@ import MovieHero from '../components/MovieHero';
 
 const categories = [
   { id: 'trending', title: 'Trending Now' },
+  { id: 'discover', title: 'Discover Something New' }, // Added dynamic discovery
   { id: 'popular', title: 'Popular Movies' },
   { id: 'top_rated', title: 'Top Rated' },
   { id: 'now_playing', title: 'Now Playing' },

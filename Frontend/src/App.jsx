@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Search from './pages/Search';
 import Movie from './pages/Movie';
 import Recommend from './pages/Recommend';
+import Player from './pages/Player';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<Search />} />
             <Route path="/movie/:id" element={<Movie />} />
+            <Route path="/player/:id" element={<Player />} />
             <Route path="/recommend" element={<Recommend />} />
           </Routes>
         </main>
