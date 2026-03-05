@@ -49,3 +49,4 @@ checkpoints/
 runs/
 
 # Data folders (raw/large data); keep small CSVs if needed
+.devcontainer
