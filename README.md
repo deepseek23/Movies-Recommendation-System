@@ -1,135 +1,131 @@
 # 🎬 Movie Recommendation System
 
-A comprehensive movie recommendation platform featuring a **Streamlit** frontend and a **FastAPI** backend. This system leverages a content-based filtering approach using TF-IDF vectorization on movie metadata to suggest similar movies.
+A modern, responsive movie recommendation platform built with **React** and **FastAPI**. The system uses a content-based filtering algorithm (TF-IDF) to suggest similar movies based on metadata like genres, keywords, cast, and crew.
 
+![React](https://img.shields.io/badge/React-18%2B-blue)
+![Vite](https://img.shields.io/badge/Vite-4%2B-purple)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0%2B-cyan)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-green)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111.0-green)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.36.0-red)
-![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.5.1-orange)
 
-## 🌟 Features
+## 🚀 Live Demo
 
-- **Personalized Recommendations**: Suggests movies based on content similarity (genres, keywords, cast, crew).
-- **Interactive UI**: User-friendly interface built with Streamlit to browse movies and view details.
-- **RESTful API**: fast and efficient backend powered by FastAPI to serve movie data and recommendations.
-- **Data Analysis**: Includes a Jupyter Notebook for data preprocessing and model training.
-- **TMDB Integration**: Fetches high-quality movie posters and details using the The Movie Database (TMDB) API.
+- **Frontend Application**: https://movies-recommendation-system-sigma.vercel.app/
+- **Backend API (Docs)**: [https://movies-recommendation-system-bq0k.onrender.com/docs](https://movies-recommendation-system-bq0k.onrender.com/docs)
 
-## 📂 Folder Structure
+> **⚠️ Important Note:** The backend is hosted on Render's free tier. The server spins down after periods of inactivity. Please allow approximately **1 minute** for the backend to wake up upon your first request. Subsequent requests will be fast.
 
-Here's an overview of the project's file organization:
+## ✨ Features
+
+- **Personalized Recommendations**: Get movie suggestions based on content similarity using Cosine Similarity and TF-IDF.
+- **Modern UI/UX**: Fully responsive design optimized for both desktop and mobile devices.
+- **Real-time Search**: Instant search results with movie suggestions.
+- **Movie Details**: View comprehensive information including overview, cast, rating, and trailers.
+- **Genre Exploration**: Browse movies by genre and find similar titles.
+- **Interactive Animations**: Smooth transitions powered by Framer Motion.
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: React.js with Vite
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **Animations**: Framer Motion
+- **Routing**: React Router DOM (v6/v7)
+- **HTTP Client**: Axios
+
+### Backend
+- **Framework**: FastAPI
+- **Language**: Python
+- **Machine Learning**: Scikit-learn, Pandas, NumPy
+- **Server**: Uvicorn
+
+## 📂 Project Structure
 
 ```
 Movie recommendation system/
-├── .devcontainer/       # Configuration for development containers (VS Code)
-├── .git/                # Git version control directory
-├── .gitignore           # Specifies files to ignore in Git
-├── .idea/               # IntelliJ IDEA project configuration
-├── app/                 # Main application source code
-│   ├── .env             # Environment variables (API keys, etc.) - specific to your local setup
-│   ├── .env.example     # Template for .env file
-│   ├── .python-version  # Python version specification
-│   ├── app.py           # Streamlit frontend application entry point
-│   ├── main.py          # FastAPI backend application entry point
-│   ├── requirements.txt # Python dependencies list
-│   ├── runtime.txt      # Runtime configuration (e.g., for deployment platforms)
-│   ├── __pycache__/     # Compiled Python bytecode
-│   ├── data/            # Raw data files
-│   │   └── movies_metadata.csv  # The dataset used for training the model
-│   ├── model/           # Serialized model files (Pickles)
-│   │   ├── df.pkl           # Preprocessed DataFrame
-│   │   ├── indices.pkl      # Movie indices mapping
-│   │   ├── tfidf_matrix.pkl # TF-IDF Matrix for similarity calculation
-│   │   └── tfidf.pkl        # TF-IDF Vectorizer object
-│   └── notebook/        # Data Science experiments
-│       └── movies.ipynb     # Jupyter Notebook for data cleaning, EDA, and model building
-└── README.md            # Project documentation (this file)
+├── Backend/             # Python FastAPI Server
+│   ├── main.py          # API entry point
+│   ├── requirements.txt # Python dependencies
+│   ├── model/           # ML models and data (pickles)
+│   ├── data/            # Source datasets
+│   └── notebook/        # Jupyter notebooks for model training
+│
+├── Frontend/            # React Application
+│   ├── src/
+│   │   ├── components/  # Reusable UI components
+│   │   ├── pages/       # Application routes/pages
+│   │   ├── api/         # API integration logic
+│   │   └── assets/      # Static assets
+│   ├── tailwind.config.js
+│   └── vite.config.js
+└── README.md            # Project documentation
 ```
 
-## 🚀 Getting Started
+## 💻 Local Installation & Setup
 
-Follow these instructions to set up and run the project locally.
+Follow these steps to run the project locally.
 
-### Prerequisites
-
-- Python 3.10 or higher
-- A TMDB API Key (Get one from [The Movie Database](https://www.themoviedb.org/documentation/api))
-
-### Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd "Movie recommendation system"
-    ```
-
-2.  **Navigate to the `app` directory:**
-    ```bash
-    cd app
-    ```
-
-3.  **Install dependencies:**
-    It is recommended to use a virtual environment.
-    ```bash
-    python -m venv venv
-    # Activate:
-    # Windows: venv\Scripts\activate
-    # Mac/Linux: source venv/bin/activate
-    
-    pip install -r requirements.txt
-    ```
-
-4.  **Set up Environment Variables:**
-    - Rename `.env.example` to `.env`.
-    - Open `.env` and add your TMDB API Key:
-      ```env
-      TMDB_API_KEY=your_actual_api_key_here
-      ```
-
-### Running the Application
-
-You can run the backend and frontend separately.
-
-#### 1. Backend (FastAPI)
-
-Start the API server:
+### 1. Clone the Repository
 ```bash
-# Make sure you are in the 'app' directory
+git clone <repository-url>
+cd "Movie recommendation system"
+```
+
+### 2. Backend Setup
+Navigate to the backend directory and set up the Python environment.
+
+```bash
+cd Backend
+
+# Create a virtual environment (recommended)
+python -m venv venv
+# Activate:
+# Windows: venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file and add your TMDB API Key
+# TMDB_API_KEY=your_actual_api_key_here
+
+# Run the server
 uvicorn main:app --reload
 ```
-The API will be available at `http://127.0.0.1:8000`. You can access the automatic documentation at `http://127.0.0.1:8000/docs`.
+The backend will start at `http://127.0.0.1:8000`.
 
-#### 2. Frontend (Streamlit)
+### 3. Frontend Setup
+Open a new terminal, navigate to the frontend directory, and start the development server.
 
-By default, the frontend is configured to connect to a deployed backend. To use your local backend:
-1.  Open `app.py`.
-2.  Change the `API_BASE` variable:
-    ```python
-    # app.py
-    # API_BASE = "https://movies-recommendation-system-bq0k.onrender.com"
-    API_BASE = "http://127.0.0.1:8000" 
-    ```
-3.  Run the Streamlit app:
-    ```bash
-    streamlit run app.py
-    ```
-The application will open in your browser at `http://localhost:8501`.
+```bash
+cd ../Frontend
 
-## 🧠 How It Works
+# Install dependencies
+npm install
 
-1.  **Data Processing (`notebook/movies.ipynb`)**: The dataset `movies_metadata.csv` is cleaned and processed. Text data (genres, keywords, etc.) is combined into a single string for each movie.
-2.  **Model Building**: A TF-IDF Vectorizer converts the text data into numerical vectors. A Cosine Similarity matrix is implicitly used (or computed on demand via nearest neighbors) to find movies with similar content vectors.
-3.  **API (`main.py`)**: The FastAPI backend loads the pre-computed matrices and dataframes. When a request comes in for a specific movie, it calculates similarity scores and returns the top recommended movies along with their details (fetched from TMDB).
-4.  **Frontend (`app.py`)**: The Streamlit interface allows users to search for movies, see details, and fetches recommendations from the API to display them visually.
+# Start development server
+npm run dev
+```
+The frontend will start at `http://localhost:5173`.
 
-## 🛠️ Technologies Used
+## ⚙️ Configuration
 
-- **Language**: Python
-- **Web Frameworks**: Streamlit (Frontend), FastAPI (Backend)
-- **Data Science**: Pandas, NumPy, Scikit-learn
-- **API**: The Movie Database (TMDB) API
-- **Deployment**: Render (for the live demo)
+### Environment Variables
 
-## 📄 License
+**Backend (`Backend/.env`)**
+```env
+TMDB_API_KEY=your_tmdb_api_key
+```
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+**Frontend (`Frontend/.env` - optional)**
+If you want to point the local frontend to a specific backend (e.g., local or production):
+```env
+VITE_API_BASE=http://127.0.0.1:8000  # for local development
+# OR
+VITE_API_BASE=https://movies-recommendation-system-bq0k.onrender.com  # to use the live backend
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
