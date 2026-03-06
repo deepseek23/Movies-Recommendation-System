@@ -64,11 +64,11 @@ const Recommend = () => {
     <div className="min-h-screen bg-background">
       <MovieHero movie={bundle.movie_details} />
 
-      <div className="max-w-350 mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         {/* AI Content Matches */}
         {tfidfRecs.length > 0 && (
           <section className="pt-12 pb-6">
-            <div className="flex items-center gap-3 mb-2 px-6 md:px-12">
+            <div className="flex items-center gap-3 mb-2 px-4 md:px-12">
               <Sparkles className="w-4 h-4 text-accent shrink-0" />
               <h2 className="text-lg font-semibold text-white">AI Content Matches</h2>
               <span className="ml-auto text-xs text-gray-600">{tfidfRecs.length} results</span>
@@ -80,7 +80,7 @@ const Recommend = () => {
         {/* Genre recommendations */}
         {genreRecs.length > 0 && (
           <section className="py-12 border-t border-white/5">
-            <div className="flex items-center gap-3 mb-2 px-6 md:px-12">
+            <div className="flex items-center gap-3 mb-2 px-4 md:px-12">
               <span className="w-0.5 h-5 bg-gray-700 rounded-full shrink-0" />
               <h2 className="text-lg font-semibold text-white">More in this Genre</h2>
               <span className="ml-auto text-xs text-gray-600">{genreRecs.length} results</span>

@@ -83,7 +83,7 @@ const SearchBar = () => {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
             placeholder="Search movies..."
-            className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none min-w-0"
+            className="flex-1 bg-transparent text-base md:text-sm text-white placeholder-gray-600 outline-none min-w-0"
           />
           {query && (
             <button

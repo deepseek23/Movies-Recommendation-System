@@ -33,7 +33,7 @@ const MovieHero = ({ movie }) => {
 
       {/* Content */}
       <div className="relative z-10 h-full flex items-end md:items-center">
-        <div className="max-w-[1400px] mx-auto w-full px-6 md:px-12 pb-14 md:pb-0">
+        <div className="max-w-[1400px] mx-auto w-full px-4 md:px-12 pb-14 md:pb-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -41,11 +41,11 @@ const MovieHero = ({ movie }) => {
             className="max-w-lg"
           >
             {/* Meta row */}
-            <div className="flex flex-wrap items-center gap-3 mb-3 text-sm text-gray-400">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2 md:mb-3 text-xs md:text-sm text-gray-400">
               {year && <span className="tabular-nums">{year}</span>}
               {rating && (
                 <span className="flex items-center gap-1 text-amber-400 font-semibold">
-                  <Star className="w-3.5 h-3.5 fill-amber-400" />
+                  <Star className="w-3 md:w-3.5 h-3 md:h-3.5 fill-amber-400" />
                   {rating}
                 </span>
               )}
@@ -64,13 +64,13 @@ const MovieHero = ({ movie }) => {
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-black text-white leading-[1.05] tracking-tight mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-black text-white leading-[1.05] tracking-tight mb-2 md:mb-4">
               {movie.title}
             </h1>
 
             {/* Overview */}
             {movie.overview && (
-              <p className="text-gray-400 text-sm md:text-base leading-relaxed line-clamp-3 mb-7 max-w-md">
+              <p className="text-gray-400 text-sm md:text-base leading-relaxed line-clamp-3 mb-4 md:mb-7 max-w-md">
                 {movie.overview}
               </p>
             )}
@@ -79,17 +79,17 @@ const MovieHero = ({ movie }) => {
             <div className="flex items-center gap-3">
               <Link
                 to={movieId ? `/player/${movieId}` : '#'}
-                className="flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-md font-bold text-sm hover:bg-white/90 transition-colors tracking-wide"
+                className="flex items-center gap-1.5 md:gap-2 bg-white text-black px-4 py-2 md:px-6 md:py-2.5 rounded-md font-bold text-xs md:text-sm hover:bg-white/90 transition-colors tracking-wide"
               >
-                <Play className="w-4 h-4 fill-black" />
-                Watch Now
+                <Play className="w-3.5 h-3.5 md:w-4 md:h-4 fill-black" />
+                Watch
               </Link>
               <Link
                 to={movieId ? `/movie/${movieId}` : '#'}
-                className="flex items-center gap-2 bg-white/10 text-white px-6 py-2.5 rounded-md font-semibold text-sm hover:bg-white/[0.18] transition-colors border border-white/10 tracking-wide"
+                className="flex items-center gap-1.5 md:gap-2 bg-white/10 text-white px-4 py-2 md:px-6 md:py-2.5 rounded-md font-semibold text-xs md:text-sm hover:bg-white/[0.18] transition-colors border border-white/10 tracking-wide"
               >
-                <Info className="w-4 h-4" />
-                More Info
+                <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                Info
               </Link>
             </div>
           </motion.div>

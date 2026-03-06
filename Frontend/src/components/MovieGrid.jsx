@@ -18,8 +18,7 @@ export const MovieGrid = ({ movies, isLoading, emptyMessage = 'No movies found.'
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.35 }}
-      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 px-6 md:px-12 py-4"
+      className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-x-2.5 gap-y-6 md:gap-x-4 md:gap-y-8 px-4 md:px-12 py-4"
     >
       {movies.map((movie, idx) => (
         <motion.div

@@ -42,10 +42,10 @@ const MovieCard = ({ movie }) => {
 
       {/* Info below poster */}
       <div className="mt-2.5 px-0.5">
-        <h3 className="text-sm font-medium text-white truncate leading-snug group-hover:text-gray-200 transition-colors">
+        <h3 className="text-xs md:text-sm font-medium text-white truncate leading-snug group-hover:text-gray-200 transition-colors">
           {movie.title}
         </h3>
-        {year && <p className="text-xs text-gray-600 mt-0.5">{year}</p>}
+        {year && <p className="text-[10px] md:text-xs text-gray-600 mt-0.5">{year}</p>}
       </div>
     </Link>
   );

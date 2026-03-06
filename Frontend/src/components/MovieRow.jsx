@@ -18,8 +18,8 @@ export const MovieRow = ({ title, movies, isLoading }) => {
   return (
     <div className="mb-10 md:mb-14 relative group/row">
       {/* Section header */}
-      <div className="flex items-center gap-3 mb-4 px-6 md:px-12">
-        <span className="w-0.5 h-5 bg-accent rounded-full shrink-0" />
+      <div className="flex items-center gap-3 mb-3 md:mb-4 px-4 md:px-12">
+        <span className="w-0.5 h-4 md:h-5 bg-accent rounded-full shrink-0" />
         <h2 className="text-base md:text-lg font-semibold text-white tracking-wide">{title}</h2>
       </div>
 
@@ -45,12 +45,12 @@ export const MovieRow = ({ title, movies, isLoading }) => {
       ) : (
         <div
           ref={rowRef}
-          className="flex gap-3 md:gap-4 overflow-x-auto px-6 md:px-12 pb-3 hide-scrollbar scroll-smooth"
+          className="flex gap-2.5 md:gap-4 overflow-x-auto px-4 md:px-12 pb-4 hide-scrollbar scroll-smooth snap-x snap-mandatory md:snap-none"
         >
           {movies.map((movie, idx) => (
             <div
               key={movie.tmdb_id || movie.id || idx}
-              className="min-w-30 sm:min-w-35 md:min-w-39 lg:min-w-43 shrink-0"
+              className="min-w-[105px] sm:min-w-[130px] md:min-w-[160px] lg:min-w-[180px] shrink-0 snap-start"
             >
               <MovieCard movie={movie} />
             </div>

@@ -90,7 +90,7 @@ const Search = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Page header */}
-      <div className="pt-24 pb-8 px-6 md:px-12 max-w-[1400px] mx-auto">
+      <div className="pt-24 pb-8 px-4 md:px-12 max-w-[1400px] mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold text-white mb-6">Search</h1>
 
         <form onSubmit={onSubmit} className="relative max-w-2xl mb-8">
@@ -100,7 +100,7 @@ const Search = () => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Search for movies, genres, or actors..."
-            className="w-full bg-cards border border-white/10 rounded-lg py-3.5 pl-11 pr-28 text-sm text-white placeholder-gray-600 outline-none focus:border-white/25 transition-colors"
+            className="w-full bg-cards border border-white/10 rounded-lg py-3.5 pl-11 pr-28 text-base md:text-sm text-white placeholder-gray-600 outline-none focus:border-white/25 transition-colors"
           />
           <button
             type="submit"

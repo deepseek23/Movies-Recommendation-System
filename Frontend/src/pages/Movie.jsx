@@ -66,7 +66,7 @@ const Movie = () => {
 
       {/* Genre tags strip */}
       {movie.genres && movie.genres.length > 0 && (
-        <div className="max-w-[1400px] mx-auto px-6 md:px-12 py-5 border-b border-white/[0.05]">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-12 py-4 md:py-5 border-b border-white/[0.05]">
           <div className="flex flex-wrap gap-2">
             {movie.genres.map((g, i) => (
               <span
