@@ -1,5 +1,6 @@
 import os
 import pickle
+import asyncio
 from typing import Optional, List, Dict, Any, Tuple
 
 import numpy as np
@@ -42,12 +43,13 @@ app.add_middleware(
 # =========================
 # PICKLE GLOBALS
 # =========================
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DF_PATH = os.path.join(BASE_DIR, "df.pkl")
-INDICES_PATH = os.path.join(BASE_DIR, "indices.pkl")
-TFIDF_MATRIX_PATH = os.path.join(BASE_DIR, "tfidf_matrix.pkl")
-TFIDF_PATH = os.path.join(BASE_DIR, "tfidf.pkl")
+DF_PATH = os.path.join(BASE_DIR, "model", "df.pkl")
+INDICES_PATH = os.path.join(BASE_DIR, "model", "indices.pkl")
+TFIDF_MATRIX_PATH = os.path.join(BASE_DIR, "model", "tfidf_matrix.pkl")
+TFIDF_PATH = os.path.join(BASE_DIR, "model", "tfidf.pkl")
 
 df: Optional[pd.DataFrame] = None
 indices_obj: Any = None
@@ -55,6 +57,8 @@ tfidf_matrix: Any = None
 tfidf_obj: Any = None
 
 TITLE_TO_IDX: Optional[Dict[str, int]] = None
+http_client: Optional[httpx.AsyncClient] = None
+
 
 
 # =========================
@@ -113,14 +117,26 @@ async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
     q = dict(params)
     q["api_key"] = TMDB_API_KEY
 
+    # Use global client if available (preferred for connection pooling)
+    client_to_use = http_client
+    should_close = False
+
+    if client_to_use is None:
+        # Fallback if global client not initialized (e.g. testing)
+        client_to_use = httpx.AsyncClient(timeout=20.0)
+        should_close = True
+
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get(f"{TMDB_BASE}{path}", params=q)
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"TMDB request error: {type(e).__name__} | {repr(e)}",
-        )
+        try:
+            r = await client_to_use.get(f"{TMDB_BASE}{path}", params=q)
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"TMDB request error: {type(e).__name__} | {repr(e)}",
+            )
+    finally:
+        if should_close:
+            await client_to_use.aclose()
 
     if r.status_code != 200:
         raise HTTPException(
@@ -240,8 +256,17 @@ def tfidf_recommend_titles(
     qv = tfidf_matrix[idx]
     scores = (tfidf_matrix @ qv.T).toarray().ravel()
 
-    # sort descending
-    order = np.argsort(-scores)
+    # sort descending - optimized
+    # Instead of full sort (O(N log N)), use argpartition for top K (O(N))
+    k = min(top_n + 10, len(scores))  # modest buffer for self-match and errors
+    if k < len(scores):
+        # partition so largest k are at the end
+        top_k_idx = np.argpartition(scores, -k)[-k:]
+        # sort specifically these top K
+        sorted_top_k = top_k_idx[np.argsort(-scores[top_k_idx])]
+        order = sorted_top_k
+    else:
+        order = np.argsort(-scores)
 
     out: List[Tuple[str, float]] = []
     for i in order:
@@ -281,8 +306,11 @@ async def attach_tmdb_card_by_title(title: str) -> Optional[TMDBMovieCard]:
 # STARTUP: LOAD PICKLES
 # =========================
 @app.on_event("startup")
-def load_pickles():
-    global df, indices_obj, tfidf_matrix, tfidf_obj, TITLE_TO_IDX
+async def load_pickles():
+    global df, indices_obj, tfidf_matrix, tfidf_obj, TITLE_TO_IDX, http_client
+
+    # Init global HTTP client
+    http_client = httpx.AsyncClient(timeout=20.0)
 
     # Load df
     with open(DF_PATH, "rb") as f:
@@ -308,6 +336,13 @@ def load_pickles():
         raise RuntimeError("df.pkl must contain a DataFrame with a 'title' column")
 
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    if http_client:
+        await http_client.aclose()
+
+
+
 # =========================
 # ROUTES
 # =========================
@@ -331,6 +366,19 @@ async def home(
     try:
         if category == "trending":
             data = await tmdb_get("/trending/movie/day", {"language": "en-US"})
+            return await tmdb_cards_from_results(data.get("results", []), limit=limit)
+
+        if category == "discover":
+            data = await tmdb_get(
+                "/discover/movie",
+                {
+                    "language": "en-US",
+                    "sort_by": "popularity.desc",
+                    "include_adult": "false",
+                    "include_video": "false",
+                    "page": 1,
+                },
+            )
             return await tmdb_cards_from_results(data.get("results", []), limit=limit)
 
         if category not in {"popular", "top_rated", "upcoming", "now_playing"}:
@@ -446,9 +494,16 @@ async def search_bundle(
         except Exception:
             recs = []
 
-    for title, score in recs:
-        card = await attach_tmdb_card_by_title(title)
-        tfidf_items.append(TFIDFRecItem(title=title, score=score, tmdb=card))
+    # Parallelize TMDB fetches for recommendations
+    # This speeds up the endpoint significantly vs sequential awaiting
+    if recs:
+        # Launch all fetches concurrently
+        tasks = [attach_tmdb_card_by_title(title) for title, _ in recs]
+        cards = await asyncio.gather(*tasks)
+
+        for (title, score), card in zip(recs, cards):
+            tfidf_items.append(TFIDFRecItem(title=title, score=score, tmdb=card))
+
 
     # 2) Genre recommendations (TMDB discover by first genre)
     genre_recs: List[TMDBMovieCard] = []
