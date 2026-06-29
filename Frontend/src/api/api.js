@@ -5,37 +5,64 @@ const api = axios.create({
     timeout: 25000,
 });
 
+const COLD_START_NOTICE_KEY = 'movie-reco-cold-start-notice-shown';
+
+const showColdStartNotice = () => {
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem(COLD_START_NOTICE_KEY)) return;
+
+    sessionStorage.setItem(COLD_START_NOTICE_KEY, 'true');
+    window.alert('The recommendation system may take up to 60 seconds to start on the first request because it is hosted on Render.');
+};
+
+const withColdStartNotice = (requestFn) => {
+    showColdStartNotice();
+    return requestFn();
+};
+
 export const TMDB_IMG = 'https://image.tmdb.org/t/p/w500';
 
 export const getHomeMovies = async (category) => {
-    const response = await api.get('/home', { params: { category, limit: 24 } });
-    return response.data;
+    return withColdStartNotice(async () => {
+        const response = await api.get('/home', { params: { category, limit: 24 } });
+        return response.data;
+    });
 };
 
 export const searchMovies = async (query) => {
-    const response = await api.get('/tmdb/search', { params: { query } });
-    return response.data;
+    return withColdStartNotice(async () => {
+        const response = await api.get('/tmdb/search', { params: { query } });
+        return response.data;
+    });
 };
 
 export const getMovieDetails = async (id) => {
-    const response = await api.get(`/movie/id/${id}`);
-    return response.data;
+    return withColdStartNotice(async () => {
+        const response = await api.get(`/movie/id/${id}`);
+        return response.data;
+    });
 };
 
 export const getGenreRecommendations = async (id) => {
-    const response = await api.get('/recommend/genre', { params: { tmdb_id: id, limit: 18 } });
-    return response.data;
+    return withColdStartNotice(async () => {
+        const response = await api.get('/recommend/genre', { params: { tmdb_id: id, limit: 18 } });
+        return response.data;
+    });
 };
 
 export const getTFIDFRecommendations = async (title) => {
-    const response = await api.get('/recommend/tfidf', { params: { title, top_n: 12 } });
-    return response.data;
+    return withColdStartNotice(async () => {
+        const response = await api.get('/recommend/tfidf', { params: { title, top_n: 12 } });
+        return response.data;
+    });
 };
 
 export const getRecommendationBundle = async (query) => {
     // Uses /movie/search?query=Avatar
-    const response = await api.get('/movie/search', { params: { query } });
-    return response.data;
+    return withColdStartNotice(async () => {
+        const response = await api.get('/movie/search', { params: { query } });
+        return response.data;
+    });
 };
 
 export const getPosterUrl = (posterPath) => {
