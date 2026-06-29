@@ -11,7 +11,7 @@ A modern, responsive movie recommendation platform built with **React** and **Fa
 ## 🚀 Live Demo
 
 - **Frontend Application**: https://movies-recommendation-system-sigma.vercel.app/
-- **Backend API (Docs)**: [https://movies-recommendation-system-bq0k.onrender.com/docs](https://movies-recommendation-system-bq0k.onrender.com/docs)
+- **Backend API (Docs)**: [https://recommendation-latest-0687.onrender.com](https://recommendation-latest-0687.onrender.com)
 
 > **⚠️ Important Note:** The backend is hosted on Render's free tier. The server spins down after periods of inactivity. Please allow approximately **1 minute** for the backend to wake up upon your first request. Subsequent requests will be fast.
 
