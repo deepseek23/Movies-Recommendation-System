@@ -116,15 +116,13 @@ The frontend will start at `http://localhost:5173`.
 **Backend (`Backend/.env`)**
 ```env
 TMDB_API_KEY=your_tmdb_api_key
-# Optional artifact URL overrides. Metadata defaults to this GitHub repository;
-# embeddings default to the Hugging Face model tarun24345/embedding-of-movies.
-DF_URL=https://raw.githubusercontent.com/deepseek23/Movies-Recommendation-System/master/Backend/model/df.pkl
-INDICES_URL=https://raw.githubusercontent.com/deepseek23/Movies-Recommendation-System/master/Backend/model/indices.pkl
-EMBEDDINGS_URL=https://huggingface.co/tarun24345/embedding-of-movies/resolve/main/embeddings.pkl
-# Optional legacy artifacts, only needed if you use them separately:
-TFIDF_URL=https://your-storage.example/tfidf.pkl
-IDF_URL=https://your-storage.example/idf.pkl
+# Models are downloaded from Hugging Face on startup (cached under Backend/model/)
+HF_REPO_ID=tarun24345/embedding-of-movies
+# Optional: private repo / higher rate limits
+# HF_TOKEN=hf_xxxxxxxx
 ```
+
+On Render, set `TMDB_API_KEY` (and optionally `HF_TOKEN`) in the service Environment tab. First boot downloads `df.pkl`, `indices.pkl`, and `embeddings.pkl` from the HF repo, then serves recommendations.
 
 **Frontend (`Frontend/.env` - optional)**
 If you want to point the local frontend to a specific backend (e.g., local or production):

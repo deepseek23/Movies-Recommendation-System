@@ -47,29 +47,37 @@ app.add_middleware(
 # =========================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "model")
 
-DF_PATH = os.path.join(BASE_DIR, "model", "df.pkl")
-INDICES_PATH = os.path.join(BASE_DIR, "model", "indices.pkl")
-EMBEDDINGS_PATH = os.path.join(BASE_DIR, "model", "embeddings.pkl")
-TFIDF_PATH = os.path.join(BASE_DIR, "model", "tfidf.pkl")
-IDF_PATH = os.path.join(BASE_DIR, "model", "idf.pkl")
-GITHUB_MODEL_BASE_URL = "https://raw.githubusercontent.com/deepseek23/Movies-Recommendation-System/master/Backend/model"
-DF_URL = os.getenv("DF_URL", f"{GITHUB_MODEL_BASE_URL}/df.pkl")
-INDICES_URL = os.getenv("INDICES_URL", f"{GITHUB_MODEL_BASE_URL}/indices.pkl")
-EMBEDDINGS_URL = os.getenv(
-    "EMBEDDINGS_URL",
-    "https://huggingface.co/tarun24345/embedding-of-movies/resolve/main/embeddings.pkl",
-)
-TFIDF_URL = os.getenv("TFIDF_URL", f"{GITHUB_MODEL_BASE_URL}/tfidf.pkl")
-IDF_URL = os.getenv("IDF_URL", f"{GITHUB_MODEL_BASE_URL}/idf.pkl")
+DF_PATH = os.path.join(MODEL_DIR, "df.pkl")
+INDICES_PATH = os.path.join(MODEL_DIR, "indices.pkl")
+EMBEDDINGS_PATH = os.path.join(MODEL_DIR, "embeddings.pkl")
+
+# All recommendation artifacts live on Hugging Face and are fetched on startup
+# (local cache + Render). Override HF_REPO_ID or per-file URLs via env if needed.
+HF_REPO_ID = os.getenv("HF_REPO_ID", "tarun24345/embedding-of-movies")
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
+HF_BASE_URL = f"https://huggingface.co/{HF_REPO_ID}/resolve/main"
+
+DF_URL = os.getenv("DF_URL", f"{HF_BASE_URL}/df.pkl")
+INDICES_URL = os.getenv("INDICES_URL", f"{HF_BASE_URL}/indices.pkl")
+EMBEDDINGS_URL = os.getenv("EMBEDDINGS_URL", f"{HF_BASE_URL}/embeddings.pkl")
 
 df: Optional[pd.DataFrame] = None
 indices_obj: Any = None
 tfidf_matrix: Any = None
 tfidf_obj: Any = None
+models_ready: bool = False
 
 TITLE_TO_IDX: Optional[Dict[str, int]] = None
 http_client: Optional[httpx.AsyncClient] = None
+
+
+def _hf_headers() -> Dict[str, str]:
+    """Optional auth for private HF repos or higher rate limits."""
+    if not HF_TOKEN:
+        return {}
+    return {"Authorization": f"Bearer {HF_TOKEN}"}
 
 
 
@@ -318,72 +326,86 @@ async def attach_tmdb_card_by_title(title: str) -> Optional[TMDBMovieCard]:
 # STARTUP: DOWNLOAD AND LOAD PICKLES
 # =========================
 async def download_artifact(path: str, url: str, required: bool = True) -> bool:
-    """Download and atomically cache a remote pickle artifact."""
+    """Download and atomically cache a Hugging Face pickle artifact."""
     artifact_path = Path(path)
     if artifact_path.is_file() and artifact_path.stat().st_size > 0:
+        print(f"[models] Using cached {artifact_path.name}")
         return True
 
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = artifact_path.with_suffix(artifact_path.suffix + ".download")
+    print(f"[models] Downloading {artifact_path.name} from {url}")
     try:
-        async with httpx.AsyncClient(timeout=None, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=None,
+            follow_redirects=True,
+            headers=_hf_headers(),
+        ) as client:
             async with client.stream("GET", url) as response:
                 if response.status_code == 404 and not required:
+                    print(f"[models] Optional artifact missing (404): {url}")
                     return False
                 response.raise_for_status()
+                bytes_written = 0
                 with temp_path.open("wb") as output:
                     async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):
                         output.write(chunk)
+                        bytes_written += len(chunk)
         if not temp_path.is_file() or temp_path.stat().st_size == 0:
-            raise RuntimeError(f"Hugging Face/GitHub returned an empty file: {url}")
+            raise RuntimeError(f"Hugging Face returned an empty file: {url}")
         os.replace(temp_path, artifact_path)
+        print(
+            f"[models] Saved {artifact_path.name} "
+            f"({bytes_written / (1024 * 1024):.1f} MB)"
+        )
         return True
     finally:
         if temp_path.exists():
             temp_path.unlink()
 
 
-async def download_embeddings() -> None:
-    """Download the large Hugging Face embedding artifact once and cache it."""
-    await download_artifact(EMBEDDINGS_PATH, EMBEDDINGS_URL)
-
-
-async def download_supporting_artifacts() -> None:
-    """Fetch metadata pickles removed from Git history and optional legacy files."""
-    await download_artifact(DF_PATH, DF_URL)
-    await download_artifact(INDICES_PATH, INDICES_URL)
-    await download_artifact(TFIDF_PATH, TFIDF_URL, required=False)
-    await download_artifact(IDF_PATH, IDF_URL, required=False)
+async def download_all_model_artifacts() -> None:
+    """Fetch df / indices / embeddings from Hugging Face in parallel."""
+    results = await asyncio.gather(
+        download_artifact(DF_PATH, DF_URL),
+        download_artifact(INDICES_PATH, INDICES_URL),
+        download_artifact(EMBEDDINGS_PATH, EMBEDDINGS_URL),
+    )
+    if not all(results):
+        raise RuntimeError(
+            f"Failed to download required model files from {HF_REPO_ID}"
+        )
 
 
 @app.on_event("startup")
 async def load_pickles():
-    global df, indices_obj, tfidf_matrix, TITLE_TO_IDX, http_client
+    global df, indices_obj, tfidf_matrix, TITLE_TO_IDX, http_client, models_ready
 
     # Init global HTTP client
     http_client = httpx.AsyncClient(timeout=20.0)
 
-    # Download files missing from the deployment checkout, then load them.
-    await download_supporting_artifacts()
+    print(f"[models] Loading recommendation artifacts from HF repo: {HF_REPO_ID}")
+    await download_all_model_artifacts()
 
     with open(DF_PATH, "rb") as f:
         df = pickle.load(f)
 
-    # Load indices
     with open(INDICES_PATH, "rb") as f:
         indices_obj = pickle.load(f)
 
-    # Download and load the embedding matrix from Hugging Face.
-    await download_embeddings()
     with open(EMBEDDINGS_PATH, "rb") as f:
         tfidf_matrix = pickle.load(f)
 
-    # Build normalized map
     TITLE_TO_IDX = build_title_to_idx_map(indices_obj)
 
-    # sanity
     if df is None or "title" not in df.columns:
         raise RuntimeError("df.pkl must contain a DataFrame with a 'title' column")
+
+    models_ready = True
+    print(
+        f"[models] Ready: {len(df)} movies, "
+        f"{len(TITLE_TO_IDX)} indexed titles"
+    )
 
 
 @app.on_event("shutdown")
@@ -398,7 +420,11 @@ async def shutdown_event():
 # =========================
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok" if models_ready else "loading",
+        "models_ready": models_ready,
+        "hf_repo": HF_REPO_ID,
+    }
 
 
 # ---------- HOME FEED (TMDB) ----------
