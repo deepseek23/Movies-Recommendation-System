@@ -50,7 +50,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "model")
 
 DF_PATH = os.path.join(MODEL_DIR, "df.pkl")
-INDICES_PATH = os.path.join(MODEL_DIR, "indices.pkl")
+MODEL_INDEX_PATH = os.path.join(MODEL_DIR, "load_modelidx.pkl")
+LEGACY_INDICES_PATH = os.path.join(MODEL_DIR, "indices.pkl")
 EMBEDDINGS_PATH = os.path.join(MODEL_DIR, "embeddings.pkl")
 
 # All recommendation artifacts live on Hugging Face and are fetched on startup
@@ -60,12 +61,17 @@ HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
 HF_BASE_URL = f"https://huggingface.co/{HF_REPO_ID}/resolve/main"
 
 DF_URL = os.getenv("DF_URL", f"{HF_BASE_URL}/df.pkl")
-INDICES_URL = os.getenv("INDICES_URL", f"{HF_BASE_URL}/indices.pkl")
+MODEL_INDEX_URL = os.getenv(
+    "MODEL_INDEX_URL", f"{HF_BASE_URL}/load_modelidx.pkl"
+)
+LEGACY_INDICES_URL = os.getenv(
+    "INDICES_URL", f"{HF_BASE_URL}/indices.pkl"
+)
 EMBEDDINGS_URL = os.getenv("EMBEDDINGS_URL", f"{HF_BASE_URL}/embeddings.pkl")
 
 df: Optional[pd.DataFrame] = None
 indices_obj: Any = None
-tfidf_matrix: Any = None
+load_model: Any = None
 tfidf_obj: Any = None
 models_ready: bool = False
 
@@ -219,11 +225,17 @@ async def tmdb_search_first(query: str) -> Optional[dict]:
 
 
 # =========================
-# TF-IDF Helpers
+# Recommendation Helpers
 # =========================
+def normalize_title(value: Any) -> str:
+    return "".join(
+        character for character in str(value).casefold() if character.isalnum()
+    )
+
+
 def build_title_to_idx_map(indices: Any) -> Dict[str, int]:
     """
-    indices.pkl can be:
+    load_modelidx.pkl can be:
     - dict(title -> index)
     - pandas Series (index=title, value=index)
     We normalize into TITLE_TO_IDX.
@@ -243,20 +255,35 @@ def build_title_to_idx_map(indices: Any) -> Dict[str, int]:
     except Exception:
         # last resort: if it's a list-like etc.
         raise RuntimeError(
-            "indices.pkl must be dict or pandas Series-like (with .items())"
+            "load_modelidx.pkl must be dict or pandas Series-like "
+            "(with .items())"
         )
 
 
-def get_local_idx_by_title(title: str) -> int:
-    global TITLE_TO_IDX
-    if TITLE_TO_IDX is None:
-        raise HTTPException(status_code=500, detail="TF-IDF index map not initialized")
-    key = _norm_title(title)
-    if key in TITLE_TO_IDX:
-        return int(TITLE_TO_IDX[key])
-    raise HTTPException(
-        status_code=404, detail=f"Title not found in local dataset: '{title}'"
-    )
+def _matching_title_indices(title: str) -> Any:
+    if df is None or "title" not in df.columns:
+        raise HTTPException(status_code=500, detail="Movie data is not loaded")
+
+    title_key = normalize_title(title)
+    title_keys = df["title"].map(normalize_title)
+    return df.index[title_keys == title_key]
+
+
+def recommend(title: str, n: int = 10) -> List[str]:
+    global df, load_model
+    if df is None or load_model is None:
+        raise HTTPException(status_code=500, detail="Recommendation model is not loaded")
+
+    matches = _matching_title_indices(title)
+    if len(matches) == 0:
+        return ["Movie not found"]
+
+    idx = matches[0]
+    sim_scores = cosine_similarity(
+        load_model[idx].reshape(1, -1), load_model
+    ).flatten()
+    sim_idx = sim_scores.argsort()[::-1][1 : n + 1]
+    return df["title"].iloc[sim_idx].tolist()
 
 
 def tfidf_recommend_titles(
@@ -266,15 +293,21 @@ def tfidf_recommend_titles(
     Returns list of (title, score) from local df using cosine similarity on TF-IDF matrix.
     Safe against missing columns/rows.
     """
-    global df, tfidf_matrix
-    if df is None or tfidf_matrix is None:
-        raise HTTPException(status_code=500, detail="TF-IDF resources not loaded")
+    global df, load_model
+    if df is None or load_model is None:
+        raise HTTPException(status_code=500, detail="Recommendation resources not loaded")
 
-    idx = get_local_idx_by_title(query_title)
+    matches = _matching_title_indices(query_title)
+    if len(matches) == 0:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Title not found in local dataset: '{query_title}'",
+        )
 
-    # Embeddings may be stored as either a scipy sparse matrix or a dense array.
-    qv = tfidf_matrix[idx]
-    scores = cosine_similarity(tfidf_matrix, qv).ravel()
+    idx = matches[0]
+    scores = cosine_similarity(
+        load_model[idx].reshape(1, -1), load_model
+    ).flatten()
 
     # sort descending - optimized
     # Instead of full sort (O(N log N)), use argpartition for top K (O(N))
@@ -352,6 +385,9 @@ async def download_artifact(path: str, url: str, required: bool = True) -> bool:
                         output.write(chunk)
                         bytes_written += len(chunk)
         if not temp_path.is_file() or temp_path.stat().st_size == 0:
+            if not required:
+                print(f"[models] Optional artifact is empty: {url}")
+                return False
             raise RuntimeError(f"Hugging Face returned an empty file: {url}")
         os.replace(temp_path, artifact_path)
         print(
@@ -365,13 +401,14 @@ async def download_artifact(path: str, url: str, required: bool = True) -> bool:
 
 
 async def download_all_model_artifacts() -> None:
-    """Fetch df / indices / embeddings from Hugging Face in parallel."""
+    """Fetch recommendation artifacts from Hugging Face in parallel."""
     results = await asyncio.gather(
         download_artifact(DF_PATH, DF_URL),
-        download_artifact(INDICES_PATH, INDICES_URL),
+        download_artifact(MODEL_INDEX_PATH, MODEL_INDEX_URL, required=False),
+        download_artifact(LEGACY_INDICES_PATH, LEGACY_INDICES_URL),
         download_artifact(EMBEDDINGS_PATH, EMBEDDINGS_URL),
     )
-    if not all(results):
+    if not results[0] or not results[2] or not results[3]:
         raise RuntimeError(
             f"Failed to download required model files from {HF_REPO_ID}"
         )
@@ -379,7 +416,7 @@ async def download_all_model_artifacts() -> None:
 
 @app.on_event("startup")
 async def load_pickles():
-    global df, indices_obj, tfidf_matrix, TITLE_TO_IDX, http_client, models_ready
+    global df, indices_obj, load_model, TITLE_TO_IDX, http_client, models_ready
 
     # Init global HTTP client
     http_client = httpx.AsyncClient(timeout=20.0)
@@ -390,11 +427,15 @@ async def load_pickles():
     with open(DF_PATH, "rb") as f:
         df = pickle.load(f)
 
-    with open(INDICES_PATH, "rb") as f:
+    index_path = MODEL_INDEX_PATH
+    if not Path(index_path).is_file() or Path(index_path).stat().st_size == 0:
+        index_path = LEGACY_INDICES_PATH
+
+    with open(index_path, "rb") as f:
         indices_obj = pickle.load(f)
 
     with open(EMBEDDINGS_PATH, "rb") as f:
-        tfidf_matrix = pickle.load(f)
+        load_model = pickle.load(f)
 
     TITLE_TO_IDX = build_title_to_idx_map(indices_obj)
 
@@ -404,7 +445,7 @@ async def load_pickles():
     models_ready = True
     print(
         f"[models] Ready: {len(df)} movies, "
-        f"{len(TITLE_TO_IDX)} indexed titles"
+        f"{len(TITLE_TO_IDX)} indexed titles from {Path(index_path).name}"
     )
 
 
