@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+df.pkl
+embedding.pkl
+indices.pkl
+load_modelidx.pkl

@@ -8,12 +8,12 @@ sdk_version: 4.44.0
 app_file: app.py
 pinned: false
 license: mit
-short_description: TF-IDF movie recommendations (models from Hub)
+short_description: Contextual embedding-based movie recommendations
 ---
 
 # 🎬 Movie Recommendation System
 
-A modern, responsive movie recommendation platform built with **React** and **FastAPI**. The system uses a content-based filtering algorithm (TF-IDF) to suggest similar movies based on metadata like genres, keywords, cast, and crew.
+A modern, responsive movie recommendation platform built with **React** and **FastAPI**. The recommendation engine uses contextual movie embedding vectors and cosine similarity to suggest titles with similar content and meaning.
 
 > **Hugging Face Space (no Docker):** this repo also runs as a **Gradio** Space via `app.py`. Models are fetched from [`tarun24345/embedding-of-movies`](https://huggingface.co/tarun24345/embedding-of-movies) at startup. FastAPI itself is not supported on Spaces without Docker — use Gradio for HF, or keep FastAPI on Render/Docker.
 
@@ -33,7 +33,8 @@ A modern, responsive movie recommendation platform built with **React** and **Fa
 
 ## ✨ Features
 
-- **Personalized Recommendations**: Get movie suggestions based on content similarity using Cosine Similarity and TF-IDF.
+- **Contextual Recommendations**: Select a movie to compare its embedding vector with the complete movie catalog and receive the most similar titles.
+- **Embedding Model Upgrade**: Recommendations have moved from sparse TF-IDF vectors to dense contextual embedding vectors, improving similarity across related genres, themes, keywords, cast, and plot context.
 - **Modern UI/UX**: Fully responsive design optimized for both desktop and mobile devices.
 - **Real-time Search**: Instant search results with movie suggestions.
 - **Movie Details**: View comprehensive information including overview, cast, rating, and trailers.
@@ -53,8 +54,16 @@ A modern, responsive movie recommendation platform built with **React** and **Fa
 ### Backend
 - **Framework**: FastAPI
 - **Language**: Python
-- **Machine Learning**: Scikit-learn, Pandas, NumPy
+- **Machine Learning**: Contextual embeddings, cosine similarity, Pandas, NumPy, and scikit-learn
 - **Server**: Uvicorn
+
+### Recommendation Flow
+1. A movie title is normalized so differences in case, spaces, and punctuation do not prevent a match.
+2. The matching row is selected from `df.pkl`.
+3. Its contextual embedding is loaded from `embeddings.pkl` and compared with all movie embeddings using cosine similarity.
+4. The highest-scoring titles are returned as recommendations and enriched with TMDB details for the frontend.
+
+The `load_modelidx.pkl` artifact is the preferred model index. `indices.pkl` is retained as a legacy fallback for deployments where the new index is unavailable.
 
 ## 📂 Project Structure
 
@@ -138,7 +147,9 @@ HF_REPO_ID=tarun24345/embedding-of-movies
 # HF_TOKEN=hf_xxxxxxxx
 ```
 
-On Render, set `TMDB_API_KEY` (and optionally `HF_TOKEN`) in the service Environment tab. First boot downloads `df.pkl`, `indices.pkl`, and `embeddings.pkl` from the HF repo, then serves recommendations.
+On Render, set `TMDB_API_KEY` (and optionally `HF_TOKEN`) in the service Environment tab. First boot downloads `df.pkl`, `load_modelidx.pkl`, `indices.pkl` (legacy fallback), and `embeddings.pkl` from the HF repo, then serves embedding-based recommendations.
+
+The backend currently keeps the `/recommend/tfidf` route name for frontend/API compatibility, but its recommendation calculation uses the contextual embedding matrix rather than TF-IDF vectors.
 
 **Frontend (`Frontend/.env` - optional)**
 If you want to point the local frontend to a specific backend (e.g., local or production):
@@ -181,7 +192,7 @@ Minimum files Spaces needs:
 | `HF_TOKEN` | Only if model repo is private | |
 
 ### 4. Wait for build
-First boot downloads `df.pkl`, `indices.pkl`, and `embeddings.pkl` from the Hub, then the Gradio UI goes live at:
+First boot downloads `df.pkl`, `load_modelidx.pkl`, `indices.pkl` (legacy fallback), and `embeddings.pkl` from the Hub, then the Gradio UI goes live at:
 
 `https://huggingface.co/spaces/YOUR_USER/YOUR_SPACE`
 

@@ -13,6 +13,11 @@ app/.env
 env/
 venv/
 ENV/
+df.pkl
+embeddings.pkl
+indices.pkl
+load_modelidx.pkl
+
 
 # Distribution / packaging
 build/
