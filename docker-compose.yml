@@ -1,0 +1,19 @@
+services:
+  backend:
+    image: tarun343/movie-recommender-api:latest
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: movie-recommender-api
+    ports:
+      # Host 8000 is often blocked by Windows excluded port ranges; container still listens on 8000
+      - "8800:8000"
+    env_file:
+      - ./Backend/.env
+    volumes:
+      # Persist downloaded HF pickles across restarts
+      - backend-model-cache:/app/model
+    restart: unless-stopped
+
+volumes:
+  backend-model-cache:
