@@ -1,6 +1,7 @@
 import os
 import pickle
 import asyncio
+from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 
 import numpy as np
@@ -10,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 # =========================
@@ -48,8 +50,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DF_PATH = os.path.join(BASE_DIR, "model", "df.pkl")
 INDICES_PATH = os.path.join(BASE_DIR, "model", "indices.pkl")
-TFIDF_MATRIX_PATH = os.path.join(BASE_DIR, "model", "tfidf_matrix.pkl")
+EMBEDDINGS_PATH = os.path.join(BASE_DIR, "model", "embeddings.pkl")
 TFIDF_PATH = os.path.join(BASE_DIR, "model", "tfidf.pkl")
+IDF_PATH = os.path.join(BASE_DIR, "model", "idf.pkl")
+GITHUB_MODEL_BASE_URL = "https://raw.githubusercontent.com/deepseek23/Movies-Recommendation-System/master/Backend/model"
+DF_URL = os.getenv("DF_URL", f"{GITHUB_MODEL_BASE_URL}/df.pkl")
+INDICES_URL = os.getenv("INDICES_URL", f"{GITHUB_MODEL_BASE_URL}/indices.pkl")
+EMBEDDINGS_URL = os.getenv(
+    "EMBEDDINGS_URL",
+    "https://huggingface.co/tarun24345/embedding-of-movies/resolve/main/embeddings.pkl",
+)
+TFIDF_URL = os.getenv("TFIDF_URL", f"{GITHUB_MODEL_BASE_URL}/tfidf.pkl")
+IDF_URL = os.getenv("IDF_URL", f"{GITHUB_MODEL_BASE_URL}/idf.pkl")
 
 df: Optional[pd.DataFrame] = None
 indices_obj: Any = None
@@ -252,9 +264,9 @@ def tfidf_recommend_titles(
 
     idx = get_local_idx_by_title(query_title)
 
-    # query vector
+    # Embeddings may be stored as either a scipy sparse matrix or a dense array.
     qv = tfidf_matrix[idx]
-    scores = (tfidf_matrix @ qv.T).toarray().ravel()
+    scores = cosine_similarity(tfidf_matrix, qv).ravel()
 
     # sort descending - optimized
     # Instead of full sort (O(N log N)), use argpartition for top K (O(N))
@@ -303,16 +315,57 @@ async def attach_tmdb_card_by_title(title: str) -> Optional[TMDBMovieCard]:
 
 
 # =========================
-# STARTUP: LOAD PICKLES
+# STARTUP: DOWNLOAD AND LOAD PICKLES
 # =========================
+async def download_artifact(path: str, url: str, required: bool = True) -> bool:
+    """Download and atomically cache a remote pickle artifact."""
+    artifact_path = Path(path)
+    if artifact_path.is_file() and artifact_path.stat().st_size > 0:
+        return True
+
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = artifact_path.with_suffix(artifact_path.suffix + ".download")
+    try:
+        async with httpx.AsyncClient(timeout=None, follow_redirects=True) as client:
+            async with client.stream("GET", url) as response:
+                if response.status_code == 404 and not required:
+                    return False
+                response.raise_for_status()
+                with temp_path.open("wb") as output:
+                    async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):
+                        output.write(chunk)
+        if not temp_path.is_file() or temp_path.stat().st_size == 0:
+            raise RuntimeError(f"Hugging Face/GitHub returned an empty file: {url}")
+        os.replace(temp_path, artifact_path)
+        return True
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+
+async def download_embeddings() -> None:
+    """Download the large Hugging Face embedding artifact once and cache it."""
+    await download_artifact(EMBEDDINGS_PATH, EMBEDDINGS_URL)
+
+
+async def download_supporting_artifacts() -> None:
+    """Fetch metadata pickles removed from Git history and optional legacy files."""
+    await download_artifact(DF_PATH, DF_URL)
+    await download_artifact(INDICES_PATH, INDICES_URL)
+    await download_artifact(TFIDF_PATH, TFIDF_URL, required=False)
+    await download_artifact(IDF_PATH, IDF_URL, required=False)
+
+
 @app.on_event("startup")
 async def load_pickles():
-    global df, indices_obj, tfidf_matrix, tfidf_obj, TITLE_TO_IDX, http_client
+    global df, indices_obj, tfidf_matrix, TITLE_TO_IDX, http_client
 
     # Init global HTTP client
     http_client = httpx.AsyncClient(timeout=20.0)
 
-    # Load df
+    # Download files missing from the deployment checkout, then load them.
+    await download_supporting_artifacts()
+
     with open(DF_PATH, "rb") as f:
         df = pickle.load(f)
 
@@ -320,13 +373,10 @@ async def load_pickles():
     with open(INDICES_PATH, "rb") as f:
         indices_obj = pickle.load(f)
 
-    # Load TF-IDF matrix (usually scipy sparse)
-    with open(TFIDF_MATRIX_PATH, "rb") as f:
+    # Download and load the embedding matrix from Hugging Face.
+    await download_embeddings()
+    with open(EMBEDDINGS_PATH, "rb") as f:
         tfidf_matrix = pickle.load(f)
-
-    # Load tfidf vectorizer (optional, not used directly here)
-    with open(TFIDF_PATH, "rb") as f:
-        tfidf_obj = pickle.load(f)
 
     # Build normalized map
     TITLE_TO_IDX = build_title_to_idx_map(indices_obj)
