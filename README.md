@@ -1,12 +1,28 @@
+---
+title: Movie Recommendation System
+emoji: 🎬
+colorFrom: indigo
+colorTo: blue
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app.py
+pinned: false
+license: mit
+short_description: TF-IDF movie recommendations (models from Hub)
+---
+
 # 🎬 Movie Recommendation System
 
 A modern, responsive movie recommendation platform built with **React** and **FastAPI**. The system uses a content-based filtering algorithm (TF-IDF) to suggest similar movies based on metadata like genres, keywords, cast, and crew.
+
+> **Hugging Face Space (no Docker):** this repo also runs as a **Gradio** Space via `app.py`. Models are fetched from [`tarun24345/embedding-of-movies`](https://huggingface.co/tarun24345/embedding-of-movies) at startup. FastAPI itself is not supported on Spaces without Docker — use Gradio for HF, or keep FastAPI on Render/Docker.
 
 ![React](https://img.shields.io/badge/React-18%2B-blue)
 ![Vite](https://img.shields.io/badge/Vite-4%2B-purple)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0%2B-cyan)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-green)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![Gradio](https://img.shields.io/badge/Gradio-HF_Spaces-orange)
 
 ## 🚀 Live Demo
 
@@ -130,6 +146,50 @@ If you want to point the local frontend to a specific backend (e.g., local or pr
 VITE_API_BASE=http://127.0.0.1:8000  # for local development
 # OR
 VITE_API_BASE=https://movies-recommendation-system-bq0k.onrender.com  # to use the live backend
+```
+
+## 🤗 Deploy on Hugging Face Spaces (no Docker)
+
+Spaces without Docker supports **Gradio** / Streamlit / Static — not FastAPI. Use `app.py` (Gradio) as the Space backend/demo.
+
+### 1. Create the Space
+1. Go to [huggingface.co/new-space](https://huggingface.co/new-space)
+2. Name it (e.g. `movie-recommender`)
+3. Select **Gradio** as the SDK (not Docker)
+4. Hardware: **CPU basic** is enough to start
+5. Create the Space
+
+### 2. Push this repo (or the Gradio files)
+From your machine (replace `YOUR_USER` / `YOUR_SPACE`):
+
+```bash
+git remote add space https://huggingface.co/spaces/YOUR_USER/YOUR_SPACE
+git push space main
+```
+
+Minimum files Spaces needs:
+- `app.py` — entry point
+- `gradio_app.py` — model load + UI
+- `requirements.txt` — dependencies
+- `README.md` — with the YAML frontmatter at the top (already added)
+
+### 3. Add secrets (Space → Settings → Variables and secrets)
+| Name | Required | Notes |
+|------|----------|--------|
+| `TMDB_API_KEY` | Yes (for posters) | Same key as local `.env` |
+| `HF_REPO_ID` | No | Default: `tarun24345/embedding-of-movies` |
+| `HF_TOKEN` | Only if model repo is private | |
+
+### 4. Wait for build
+First boot downloads `df.pkl`, `indices.pkl`, and `embeddings.pkl` from the Hub, then the Gradio UI goes live at:
+
+`https://huggingface.co/spaces/YOUR_USER/YOUR_SPACE`
+
+### Local Gradio (same code)
+```bash
+pip install -r requirements.txt
+python app.py
+# → http://127.0.0.1:7860
 ```
 
 ## 🤝 Contributing
